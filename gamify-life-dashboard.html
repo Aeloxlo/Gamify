@@ -1,0 +1,1285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gamify Your Life — RPG Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Share+Tech+Mono&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg:       #0a0f0d;
+    --bg2:      #0f1a14;
+    --bg3:      #152218;
+    --panel:    #111c15;
+    --border:   #1e3424;
+    --border2:  #2a4a30;
+    --green:    #3ddc84;
+    --green2:   #22a85a;
+    --green3:   #145c30;
+    --gold:     #c9a84c;
+    --gold2:    #f0c96a;
+    --red:      #e05252;
+    --blue:     #4a9eff;
+    --purple:   #9b6dff;
+    --text:     #d4e8d8;
+    --text2:    #7aab84;
+    --text3:    #3d6644;
+    --glow:     0 0 12px rgba(61,220,132,0.3);
+    --glow2:    0 0 20px rgba(61,220,132,0.15);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Scanline overlay */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.03) 2px,
+      rgba(0,0,0,0.03) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* Noise texture */
+  body::after {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9998;
+    opacity: 0.4;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 220px 1fr 260px;
+    grid-template-rows: 64px 1fr;
+    gap: 8px;
+    padding: 8px;
+    min-height: 100vh;
+  }
+
+  /* ─── TOPBAR ─── */
+  .topbar {
+    grid-column: 1 / -1;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .topbar::before {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--green), transparent);
+    opacity: 0.5;
+  }
+
+  .char-name {
+    font-family: 'Cinzel', serif;
+    font-size: 18px;
+    color: var(--green);
+    text-shadow: var(--glow);
+    letter-spacing: 2px;
+  }
+
+  .level-badge {
+    background: var(--green3);
+    border: 1px solid var(--green2);
+    color: var(--green);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 2px;
+  }
+
+  .class-badge {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--gold);
+    border: 1px solid var(--gold);
+    padding: 2px 8px;
+    border-radius: 2px;
+    background: rgba(201,168,76,0.08);
+  }
+
+  .xp-bar-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .xp-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--text3);
+    display: flex;
+    justify-content: space-between;
+  }
+  .xp-bar {
+    height: 6px;
+    background: var(--bg3);
+    border-radius: 2px;
+    border: 1px solid var(--border2);
+    overflow: hidden;
+  }
+  .xp-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--green2), var(--green));
+    border-radius: 2px;
+    box-shadow: 0 0 8px var(--green2);
+    animation: xpgrow 1.2s cubic-bezier(0.16,1,0.3,1) forwards;
+    transform-origin: left;
+  }
+  @keyframes xpgrow { from { width: 0 !important; } }
+
+  .hp-mp-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 160px;
+  }
+  .stat-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .stat-icon { font-size: 12px; width: 14px; text-align: center; }
+  .stat-bar {
+    flex: 1;
+    height: 5px;
+    background: var(--bg3);
+    border-radius: 2px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+  .hp-fill  { height:100%; background: linear-gradient(90deg, #c0392b, var(--red)); box-shadow: 0 0 6px var(--red); border-radius:2px; }
+  .mp-fill  { height:100%; background: linear-gradient(90deg, #1a5599, var(--blue)); box-shadow: 0 0 6px var(--blue); border-radius:2px; }
+  .str-fill { height:100%; background: linear-gradient(90deg, var(--gold), var(--gold2)); box-shadow: 0 0 6px var(--gold); border-radius:2px; }
+  .stat-val {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--text2);
+    min-width: 28px;
+    text-align: right;
+  }
+
+  .date-display {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--text3);
+    margin-left: auto;
+  }
+
+  /* ─── LEFT PANEL ─── */
+  .left-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow-y: auto;
+  }
+
+  .panel-title {
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--text3);
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 6px;
+    margin-bottom: 4px;
+  }
+
+  /* Character avatar */
+  .char-avatar {
+    width: 100%;
+    aspect-ratio: 1;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .char-avatar::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 50% 80%, rgba(61,220,132,0.15), transparent 70%);
+  }
+  .char-avatar-letter {
+    font-family: 'Cinzel', serif;
+    font-size: 64px;
+    color: var(--green3);
+    text-shadow: 0 0 30px rgba(61,220,132,0.4);
+    position: relative;
+    z-index: 1;
+  }
+  .char-avatar-glow {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 40%;
+    background: linear-gradient(transparent, rgba(61,220,132,0.1));
+  }
+
+  /* Stats list */
+  .stats-list { display: flex; flex-direction: column; gap: 6px; }
+  .stat-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .stat-name {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--text2);
+    width: 60px;
+    flex-shrink: 0;
+  }
+  .stat-track {
+    flex: 1;
+    height: 8px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    position: relative;
+  }
+  .stat-fill {
+    height: 100%;
+    border-radius: 2px;
+    animation: xpgrow 1.4s cubic-bezier(0.16,1,0.3,1) forwards;
+  }
+  .stat-num {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--text3);
+    width: 22px;
+    text-align: right;
+  }
+  .str-bar  { background: linear-gradient(90deg, #c0392b, var(--red)); box-shadow: 0 0 4px var(--red); }
+  .agi-bar  { background: linear-gradient(90deg, #1a8c52, var(--green)); box-shadow: 0 0 4px var(--green); }
+  .int-bar  { background: linear-gradient(90deg, #2255aa, var(--blue)); box-shadow: 0 0 4px var(--blue); }
+  .vit-bar  { background: linear-gradient(90deg, var(--gold), var(--gold2)); box-shadow: 0 0 4px var(--gold); }
+  .wlth-bar { background: linear-gradient(90deg, #7b4fa6, var(--purple)); box-shadow: 0 0 4px var(--purple); }
+  .dsc-bar  { background: linear-gradient(90deg, #1a7070, #4ecece); box-shadow: 0 0 4px #4ecece; }
+
+  /* Achievements preview */
+  .ach-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+  }
+  .ach-item {
+    aspect-ratio: 1;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    position: relative;
+    cursor: pointer;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .ach-item:hover { border-color: var(--green2); transform: scale(1.05); }
+  .ach-item.locked {
+    filter: grayscale(1);
+    opacity: 0.3;
+  }
+  .ach-item.legendary { border-color: var(--gold); box-shadow: 0 0 6px rgba(201,168,76,0.4); }
+  .ach-item.rare { border-color: var(--blue); box-shadow: 0 0 6px rgba(74,158,255,0.3); }
+
+  /* ─── CENTER PANEL ─── */
+  .center-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow-y: auto;
+  }
+
+  .center-top {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  /* Radar chart container */
+  .radar-wrap {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  .radar-canvas-wrap {
+    width: 100%;
+    max-width: 220px;
+    aspect-ratio: 1;
+  }
+
+  /* Weekly activity chart */
+  .activity-wrap {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 12px;
+  }
+  .activity-canvas-wrap {
+    width: 100%;
+    height: 130px;
+    margin-top: 8px;
+  }
+
+  /* Quest list */
+  .quests-wrap {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 12px;
+    flex: 1;
+  }
+  .quest-tabs {
+    display: flex;
+    gap: 2px;
+    margin-bottom: 10px;
+  }
+  .quest-tab {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    padding: 3px 10px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text3);
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.2s;
+    letter-spacing: 1px;
+  }
+  .quest-tab.active {
+    background: var(--green3);
+    border-color: var(--green2);
+    color: var(--green);
+  }
+
+  .quest-list { display: flex; flex-direction: column; gap: 5px; }
+  .quest-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .quest-item::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+  }
+  .quest-item.daily::before  { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .quest-item.weekly::before { background: var(--blue); box-shadow: 0 0 6px var(--blue); }
+  .quest-item.boss::before   { background: var(--red); box-shadow: 0 0 6px var(--red); }
+  .quest-item.side::before   { background: var(--gold); box-shadow: 0 0 6px var(--gold); }
+  .quest-item:hover { border-color: var(--border2); background: var(--bg); }
+  .quest-item.done { opacity: 0.5; }
+  .quest-item.done .quest-name { text-decoration: line-through; }
+
+  .quest-check {
+    width: 16px; height: 16px;
+    border: 1px solid var(--border2);
+    border-radius: 2px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    font-size: 10px;
+    transition: all 0.2s;
+  }
+  .quest-item.done .quest-check {
+    background: var(--green3);
+    border-color: var(--green2);
+    color: var(--green);
+  }
+  .quest-name {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+  }
+  .quest-xp {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--gold);
+  }
+  .quest-diff {
+    font-size: 9px;
+    padding: 1px 5px;
+    border-radius: 2px;
+  }
+  .diff-easy   { background: rgba(34,168,90,0.2); color: var(--green); border: 1px solid var(--green3); }
+  .diff-medium { background: rgba(201,168,76,0.2); color: var(--gold); border: 1px solid rgba(201,168,76,0.3); }
+  .diff-hard   { background: rgba(224,82,82,0.2); color: var(--red); border: 1px solid rgba(224,82,82,0.3); }
+  .diff-legend { background: rgba(155,109,255,0.2); color: var(--purple); border: 1px solid rgba(155,109,255,0.3); }
+
+  /* XP Log */
+  .xplog-wrap {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 12px;
+  }
+  .xp-log-list { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+  .xp-log-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    padding: 3px 0;
+    border-bottom: 1px solid var(--border);
+    color: var(--text2);
+  }
+  .xp-log-item:last-child { border-bottom: none; }
+  .xp-log-xp { color: var(--gold); }
+
+  /* ─── RIGHT PANEL ─── */
+  .right-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow-y: auto;
+  }
+
+  /* Finance snapshot */
+  .finance-snap {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 12px;
+  }
+  .finance-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-top: 8px;
+  }
+  .fin-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 8px;
+  }
+  .fin-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    color: var(--text3);
+    letter-spacing: 1px;
+    margin-bottom: 3px;
+  }
+  .fin-value {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .fin-income  { color: var(--green); }
+  .fin-expense { color: var(--red); }
+  .fin-savings { color: var(--gold); }
+  .fin-rate    { color: var(--blue); }
+
+  /* Habits */
+  .habits-wrap {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 12px;
+  }
+  .habit-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+  .habit-row {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .habit-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .habit-name {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text);
+  }
+  .habit-streak {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--gold);
+  }
+  .habit-dots {
+    display: flex;
+    gap: 3px;
+  }
+  .habit-dot {
+    width: 10px; height: 10px;
+    border-radius: 2px;
+    border: 1px solid var(--border2);
+    background: var(--bg3);
+  }
+  .habit-dot.done { background: var(--green2); border-color: var(--green); box-shadow: 0 0 4px var(--green2); }
+  .habit-dot.miss { background: rgba(224,82,82,0.3); border-color: rgba(224,82,82,0.5); }
+
+  /* Jobs pipeline */
+  .jobs-wrap {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 12px;
+  }
+  .job-list { display: flex; flex-direction: column; gap: 5px; margin-top: 8px; }
+  .job-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+  }
+  .job-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .job-info { flex: 1; }
+  .job-role { font-size: 12px; font-weight: 600; color: var(--text); }
+  .job-company { font-family: 'Share Tech Mono', monospace; font-size: 9px; color: var(--text3); }
+  .job-stage {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 2px;
+  }
+  .stage-saved    { background: rgba(122,171,132,0.15); color: var(--text2); border: 1px solid var(--border2); }
+  .stage-applied  { background: rgba(74,158,255,0.15); color: var(--blue); border: 1px solid rgba(74,158,255,0.3); }
+  .stage-screen   { background: rgba(201,168,76,0.15); color: var(--gold); border: 1px solid rgba(201,168,76,0.3); }
+  .stage-interview{ background: rgba(155,109,255,0.15); color: var(--purple); border: 1px solid rgba(155,109,255,0.3); }
+  .stage-rejected { background: rgba(224,82,82,0.1); color: var(--red); border: 1px solid rgba(224,82,82,0.2); }
+
+  /* Books */
+  .books-wrap {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 12px;
+  }
+  .book-list { display: flex; flex-direction: column; gap: 5px; margin-top: 8px; }
+  .book-item {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 5px 8px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+  }
+  .book-spine {
+    width: 6px;
+    height: 40px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+  .book-info { flex: 1; }
+  .book-title { font-size: 12px; font-weight: 600; color: var(--text); line-height: 1.2; }
+  .book-author { font-family: 'Share Tech Mono', monospace; font-size: 9px; color: var(--text3); margin-top: 1px; }
+  .book-stars { font-size: 9px; color: var(--gold); margin-top: 2px; }
+  .book-status {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+  .status-reading  { background: rgba(74,158,255,0.15); color: var(--blue); border: 1px solid rgba(74,158,255,0.3); }
+  .status-done     { background: rgba(34,168,90,0.15); color: var(--green); border: 1px solid var(--green3); }
+  .status-want     { background: rgba(122,171,132,0.1); color: var(--text3); border: 1px solid var(--border); }
+
+  /* Glow pulse on active elements */
+  @keyframes pulse-glow {
+    0%,100% { opacity: 0.6; }
+    50% { opacity: 1; }
+  }
+
+  .live-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 6px var(--green);
+    animation: pulse-glow 2s ease-in-out infinite;
+    display: inline-block;
+    margin-right: 4px;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  /* Animations on load */
+  @keyframes fadeup {
+    from { opacity:0; transform: translateY(8px); }
+    to   { opacity:1; transform: translateY(0); }
+  }
+  .panel-section {
+    animation: fadeup 0.5s ease forwards;
+  }
+  .left-panel  .panel-section:nth-child(1) { animation-delay: 0.05s; }
+  .left-panel  .panel-section:nth-child(2) { animation-delay: 0.10s; }
+  .left-panel  .panel-section:nth-child(3) { animation-delay: 0.15s; }
+  .center-panel .panel-section:nth-child(1){ animation-delay: 0.08s; }
+  .center-panel .panel-section:nth-child(2){ animation-delay: 0.14s; }
+  .center-panel .panel-section:nth-child(3){ animation-delay: 0.20s; }
+  .right-panel  .panel-section:nth-child(1){ animation-delay: 0.06s; }
+  .right-panel  .panel-section:nth-child(2){ animation-delay: 0.12s; }
+  .right-panel  .panel-section:nth-child(3){ animation-delay: 0.18s; }
+  .right-panel  .panel-section:nth-child(4){ animation-delay: 0.24s; }
+
+  .separator {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border2), transparent);
+  }
+</style>
+</head>
+<body>
+
+<div class="grid">
+
+  <!-- ─── TOPBAR ─── -->
+  <header class="topbar">
+    <span class="level-badge">LVL 12</span>
+    <span class="char-name">ALEJANDRO</span>
+    <span class="class-badge">⚔ SIMULATION MAGE</span>
+    <div class="xp-bar-wrap">
+      <div class="xp-label">
+        <span>XP PROGRESS</span>
+        <span>1,887 / 2,400 XP</span>
+      </div>
+      <div class="xp-bar">
+        <div class="xp-fill" style="width:78.6%"></div>
+      </div>
+    </div>
+    <div class="hp-mp-wrap">
+      <div class="stat-row">
+        <span class="stat-icon">❤</span>
+        <div class="stat-bar"><div class="hp-fill" style="width:82%"></div></div>
+        <span class="stat-val">82/100</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-icon">✦</span>
+        <div class="stat-bar"><div class="mp-fill" style="width:65%"></div></div>
+        <span class="stat-val">65/100</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-icon">⚡</span>
+        <div class="stat-bar"><div class="str-fill" style="width:91%"></div></div>
+        <span class="stat-val">91/100</span>
+      </div>
+    </div>
+    <span class="date-display">FRI · 2026-03-20 · <span class="live-dot"></span>ACTIVE</span>
+  </header>
+
+  <!-- ─── LEFT PANEL ─── -->
+  <aside class="left-panel">
+
+    <!-- Avatar -->
+    <div class="panel-section">
+      <div class="char-avatar">
+        <div class="char-avatar-letter">A</div>
+        <div class="char-avatar-glow"></div>
+      </div>
+    </div>
+
+    <!-- Core stats -->
+    <div class="panel-section">
+      <div class="panel-title">// Core Stats</div>
+      <div class="stats-list">
+        <div class="stat-item">
+          <span class="stat-name">STR</span>
+          <div class="stat-track"><div class="stat-fill str-bar" style="width:72%"></div></div>
+          <span class="stat-num">72</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-name">INT</span>
+          <div class="stat-track"><div class="stat-fill agi-bar" style="width:88%"></div></div>
+          <span class="stat-num">88</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-name">VIT</span>
+          <div class="stat-track"><div class="stat-fill int-bar" style="width:65%"></div></div>
+          <span class="stat-num">65</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-name">CHA</span>
+          <div class="stat-track"><div class="stat-fill vit-bar" style="width:51%"></div></div>
+          <span class="stat-num">51</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-name">WEALTH</span>
+          <div class="stat-track"><div class="stat-fill wlth-bar" style="width:63%"></div></div>
+          <span class="stat-num">63</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-name">DISC</span>
+          <div class="stat-track"><div class="stat-fill dsc-bar" style="width:79%"></div></div>
+          <span class="stat-num">79</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="separator"></div>
+
+    <!-- Achievements -->
+    <div class="panel-section">
+      <div class="panel-title">// Achievements</div>
+      <div class="ach-grid">
+        <div class="ach-item" title="First Blood — Unlocked">⚔️</div>
+        <div class="ach-item rare" title="Iron Will — Unlocked">🛡️</div>
+        <div class="ach-item" title="First Income — Unlocked">💰</div>
+        <div class="ach-item legendary" title="Legend of Discipline — Locked" style="border-color:var(--gold);opacity:0.4;">👑</div>
+        <div class="ach-item locked" title="Bookworm — Locked">📚</div>
+        <div class="ach-item locked" title="Atlas — Locked">🏋️</div>
+        <div class="ach-item locked" title="The Monk — Locked">🧘</div>
+        <div class="ach-item locked" title="Cyber Wizard — Locked">🔮</div>
+      </div>
+    </div>
+
+    <div class="separator"></div>
+
+    <!-- XP Recent log -->
+    <div class="panel-section">
+      <div class="panel-title">// Recent XP</div>
+      <div class="xp-log-list">
+        <div class="xp-log-item">
+          <span>Morning workout</span>
+          <span class="xp-log-xp">+20 XP</span>
+        </div>
+        <div class="xp-log-item">
+          <span>Read 20 pages</span>
+          <span class="xp-log-xp">+15 XP</span>
+        </div>
+        <div class="xp-log-item">
+          <span>No junk food</span>
+          <span class="xp-log-xp">+30 XP</span>
+        </div>
+        <div class="xp-log-item">
+          <span>Deep work 2h</span>
+          <span class="xp-log-xp">+25 XP</span>
+        </div>
+        <div class="xp-log-item">
+          <span>Notion templates</span>
+          <span class="xp-log-xp">+67 XP</span>
+        </div>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- ─── CENTER PANEL ─── -->
+  <main class="center-panel">
+
+    <div class="center-top">
+
+      <!-- Radar chart -->
+      <div class="radar-wrap panel-section">
+        <div class="panel-title" style="align-self:flex-start;width:100%">// Stat Radar</div>
+        <div class="radar-canvas-wrap">
+          <canvas id="radarChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Weekly XP activity -->
+      <div class="activity-wrap panel-section">
+        <div class="panel-title">// Weekly XP Activity</div>
+        <div class="activity-canvas-wrap">
+          <canvas id="activityChart"></canvas>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Today's Quests -->
+    <div class="quests-wrap panel-section">
+      <div class="panel-title">// Active Quests</div>
+      <div class="quest-tabs">
+        <div class="quest-tab active">DAILY</div>
+        <div class="quest-tab">WEEKLY</div>
+        <div class="quest-tab">SIDE</div>
+        <div class="quest-tab">BOSS</div>
+      </div>
+      <div class="quest-list" id="questList">
+
+        <div class="quest-item daily done">
+          <div class="quest-check">✓</div>
+          <span class="quest-name">Morning workout</span>
+          <span class="quest-diff diff-medium">MED</span>
+          <span class="quest-xp">+20 XP</span>
+        </div>
+
+        <div class="quest-item daily done">
+          <div class="quest-check">✓</div>
+          <span class="quest-name">Read 20 pages</span>
+          <span class="quest-diff diff-easy">EASY</span>
+          <span class="quest-xp">+15 XP</span>
+        </div>
+
+        <div class="quest-item daily done">
+          <div class="quest-check">✓</div>
+          <span class="quest-name">No junk food today</span>
+          <span class="quest-diff diff-medium">MED</span>
+          <span class="quest-xp">+30 XP</span>
+        </div>
+
+        <div class="quest-item daily done">
+          <div class="quest-check">✓</div>
+          <span class="quest-name">Complete 2h deep work block</span>
+          <span class="quest-diff diff-hard">HARD</span>
+          <span class="quest-xp">+25 XP</span>
+        </div>
+
+        <div class="quest-item daily" onclick="toggleQuest(this)">
+          <div class="quest-check"></div>
+          <span class="quest-name">Meditate 10 min</span>
+          <span class="quest-diff diff-easy">EASY</span>
+          <span class="quest-xp">+15 XP</span>
+        </div>
+
+        <div class="quest-item daily" onclick="toggleQuest(this)">
+          <div class="quest-check"></div>
+          <span class="quest-name">Cold shower</span>
+          <span class="quest-diff diff-medium">MED</span>
+          <span class="quest-xp">+15 XP</span>
+        </div>
+
+        <div class="quest-item daily" onclick="toggleQuest(this)">
+          <div class="quest-check"></div>
+          <span class="quest-name">Review monthly budget</span>
+          <span class="quest-diff diff-easy">EASY</span>
+          <span class="quest-xp">+10 XP</span>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- XP progress by stat -->
+    <div class="xplog-wrap panel-section">
+      <div class="panel-title">// XP by Stat — This Week</div>
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:8px;">
+        <div style="text-align:center;">
+          <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--text3);margin-bottom:4px;">STR</div>
+          <div style="background:var(--bg3);border:1px solid var(--border);border-radius:3px;height:60px;display:flex;align-items:flex-end;overflow:hidden;">
+            <div style="width:100%;background:linear-gradient(180deg,var(--red),#800000);height:45%;box-shadow:0 0 8px var(--red);"></div>
+          </div>
+          <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--red);margin-top:3px;">95xp</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--text3);margin-bottom:4px;">INT</div>
+          <div style="background:var(--bg3);border:1px solid var(--border);border-radius:3px;height:60px;display:flex;align-items:flex-end;overflow:hidden;">
+            <div style="width:100%;background:linear-gradient(180deg,var(--green),#004020);height:72%;box-shadow:0 0 8px var(--green);"></div>
+          </div>
+          <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--green);margin-top:3px;">155xp</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--text3);margin-bottom:4px;">VIT</div>
+          <div style="background:var(--bg3);border:1px solid var(--border);border-radius:3px;height:60px;display:flex;align-items:flex-end;overflow:hidden;">
+            <div style="width:100%;background:linear-gradient(180deg,var(--blue),#001a40);height:30%;box-shadow:0 0 8px var(--blue);"></div>
+          </div>
+          <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--blue);margin-top:3px;">60xp</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--text3);margin-bottom:4px;">CHA</div>
+          <div style="background:var(--bg3);border:1px solid var(--border);border-radius:3px;height:60px;display:flex;align-items:flex-end;overflow:hidden;">
+            <div style="width:100%;background:linear-gradient(180deg,var(--gold),#402000);height:20%;box-shadow:0 0 8px var(--gold);"></div>
+          </div>
+          <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--gold);margin-top:3px;">40xp</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--text3);margin-bottom:4px;">WEALTH</div>
+          <div style="background:var(--bg3);border:1px solid var(--border);border-radius:3px;height:60px;display:flex;align-items:flex-end;overflow:hidden;">
+            <div style="width:100%;background:linear-gradient(180deg,var(--purple),#200040);height:52%;box-shadow:0 0 8px var(--purple);"></div>
+          </div>
+          <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--purple);margin-top:3px;">112xp</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--text3);margin-bottom:4px;">DISC</div>
+          <div style="background:var(--bg3);border:1px solid var(--border);border-radius:3px;height:60px;display:flex;align-items:flex-end;overflow:hidden;">
+            <div style="width:100%;background:linear-gradient(180deg,#4ecece,#001a1a);height:88%;box-shadow:0 0 8px #4ecece;"></div>
+          </div>
+          <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#4ecece;margin-top:3px;">190xp</div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ─── RIGHT PANEL ─── -->
+  <aside class="right-panel">
+
+    <!-- Finance -->
+    <div class="finance-snap panel-section">
+      <div class="panel-title">// Finance — March 2026</div>
+      <div class="finance-grid">
+        <div class="fin-card">
+          <div class="fin-label">INCOME</div>
+          <div class="fin-value fin-income">€3,739</div>
+        </div>
+        <div class="fin-card">
+          <div class="fin-label">EXPENSES</div>
+          <div class="fin-value fin-expense">€1,293</div>
+        </div>
+        <div class="fin-card">
+          <div class="fin-label">SAVINGS</div>
+          <div class="fin-value fin-savings">€2,446</div>
+        </div>
+        <div class="fin-card">
+          <div class="fin-label">RATE</div>
+          <div class="fin-value fin-rate">65.4%</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="separator"></div>
+
+    <!-- Habits weekly -->
+    <div class="habits-wrap panel-section">
+      <div class="panel-title">// Habits — This Week</div>
+      <div class="habit-list">
+        <div class="habit-row">
+          <div class="habit-header">
+            <span class="habit-name">🏃 Morning run</span>
+            <span class="habit-streak">🔥 12d</span>
+          </div>
+          <div class="habit-dots">
+            <div class="habit-dot done"></div>
+            <div class="habit-dot done"></div>
+            <div class="habit-dot done"></div>
+            <div class="habit-dot done"></div>
+            <div class="habit-dot done"></div>
+            <div class="habit-dot done"></div>
+            <div class="habit-dot"></div>
+          </div>
+        </div>
+        <div class="habit-row">
+          <div class="habit-header">
+            <span class="habit-name">📖 Read 20 pages</span>
+            <span class="habit-streak">🔥 7d</span>
+          </div>
+          <div class="habit-dots">
+            <div class="habit-dot done"></div>
+            <div class="habit-dot done"></div>
+            <div class="habit-dot done"></div>
+            <div class="habit-dot done"></div>
+            <div class="habit-dot done"></div>
+            <div class="habit-dot miss"></div>
+            <div class="habit-dot done"></div>
+          </div>
+        </div>
+        <div class="habit-row">
+          <div class="habit-header">
+            <span class="habit-name">🧘 Meditate</span>
+            <span class="habit-streak">🔥 9d</span>
+          </div>
+          <div class="habit-dots">
+            <div class="habit-dot done"></div>
+            <div class="habit-dot done"></div>
+            <div class="habit-dot done"></div>
+            <div class="habit-dot done"></div>
+            <div class="habit-dot done"></div>
+            <div class="habit-dot done"></div>
+            <div class="habit-dot"></div>
+          </div>
+        </div>
+        <div class="habit-row">
+          <div class="habit-header">
+            <span class="habit-name">🚫 No alcohol</span>
+            <span class="habit-streak">🔥 18d</span>
+          </div>
+          <div class="habit-dots">
+            <div class="habit-dot done"></div>
+            <div class="habit-dot done"></div>
+            <div class="habit-dot done"></div>
+            <div class="habit-dot done"></div>
+            <div class="habit-dot done"></div>
+            <div class="habit-dot done"></div>
+            <div class="habit-dot done"></div>
+          </div>
+        </div>
+        <div class="habit-row">
+          <div class="habit-header">
+            <span class="habit-name">💼 Deep work</span>
+            <span class="habit-streak">🔥 5d</span>
+          </div>
+          <div class="habit-dots">
+            <div class="habit-dot done"></div>
+            <div class="habit-dot done"></div>
+            <div class="habit-dot miss"></div>
+            <div class="habit-dot done"></div>
+            <div class="habit-dot done"></div>
+            <div class="habit-dot"></div>
+            <div class="habit-dot"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="separator"></div>
+
+    <!-- Job pipeline -->
+    <div class="jobs-wrap panel-section">
+      <div class="panel-title">// Job Hunt Pipeline</div>
+      <div class="job-list">
+        <div class="job-item">
+          <div class="job-dot" style="background:var(--red);box-shadow:0 0 6px var(--red);"></div>
+          <div class="job-info">
+            <div class="job-role">CFD Engineer</div>
+            <div class="job-company">RED BULL RACING</div>
+          </div>
+          <span class="job-stage stage-saved">SAVED</span>
+        </div>
+        <div class="job-item">
+          <div class="job-dot" style="background:var(--gold);box-shadow:0 0 6px var(--gold);"></div>
+          <div class="job-info">
+            <div class="job-role">FEA Specialist</div>
+            <div class="job-company">PORSCHE ENGINEERING</div>
+          </div>
+          <span class="job-stage stage-screen">SCREENING</span>
+        </div>
+        <div class="job-item">
+          <div class="job-dot" style="background:var(--purple);box-shadow:0 0 6px var(--purple);"></div>
+          <div class="job-info">
+            <div class="job-role">Structural Analyst</div>
+            <div class="job-company">SAFRAN</div>
+          </div>
+          <span class="job-stage stage-interview">INTERVIEW</span>
+        </div>
+        <div class="job-item">
+          <div class="job-dot" style="background:var(--blue);box-shadow:0 0 6px var(--blue);"></div>
+          <div class="job-info">
+            <div class="job-role">Simulation Engineer</div>
+            <div class="job-company">AIRBUS DEFENCE</div>
+          </div>
+          <span class="job-stage stage-applied">APPLIED</span>
+        </div>
+        <div class="job-item">
+          <div class="job-dot" style="background:var(--green);box-shadow:0 0 6px var(--green);"></div>
+          <div class="job-info">
+            <div class="job-role">Dynamics Sim. Eng.</div>
+            <div class="job-company">SAUBER MOTORSPORT</div>
+          </div>
+          <span class="job-stage stage-saved">SAVED</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="separator"></div>
+
+    <!-- Books -->
+    <div class="books-wrap panel-section">
+      <div class="panel-title">// Media Log</div>
+      <div class="book-list">
+        <div class="book-item">
+          <div class="book-spine" style="background:linear-gradient(180deg,var(--blue),#001a40);"></div>
+          <div class="book-info">
+            <div class="book-title">Deep Work</div>
+            <div class="book-author">Cal Newport</div>
+            <div class="book-stars">★★★★☆</div>
+          </div>
+          <span class="book-status status-reading">READING</span>
+        </div>
+        <div class="book-item">
+          <div class="book-spine" style="background:linear-gradient(180deg,var(--green),#004020);"></div>
+          <div class="book-info">
+            <div class="book-title">Atomic Habits</div>
+            <div class="book-author">James Clear</div>
+            <div class="book-stars">★★★★★</div>
+          </div>
+          <span class="book-status status-done">DONE</span>
+        </div>
+        <div class="book-item">
+          <div class="book-spine" style="background:linear-gradient(180deg,var(--purple),#200040);"></div>
+          <div class="book-info">
+            <div class="book-title">Severance S2</div>
+            <div class="book-author">Dan Erickson</div>
+            <div class="book-stars">★★★★☆</div>
+          </div>
+          <span class="book-status status-reading">WATCHING</span>
+        </div>
+        <div class="book-item">
+          <div class="book-spine" style="background:var(--border2);"></div>
+          <div class="book-info">
+            <div class="book-title">Dune</div>
+            <div class="book-author">Frank Herbert</div>
+            <div class="book-stars" style="color:var(--text3);">— — — — —</div>
+          </div>
+          <span class="book-status status-want">QUEUE</span>
+        </div>
+      </div>
+    </div>
+
+  </aside>
+
+</div>
+
+<script>
+// ─── RADAR CHART ───
+const radarCtx = document.getElementById('radarChart').getContext('2d');
+new Chart(radarCtx, {
+  type: 'radar',
+  data: {
+    labels: ['STR', 'INT', 'VIT', 'CHA', 'WEALTH', 'DISC'],
+    datasets: [{
+      data: [72, 88, 65, 51, 63, 79],
+      backgroundColor: 'rgba(61,220,132,0.12)',
+      borderColor: '#3ddc84',
+      borderWidth: 1.5,
+      pointBackgroundColor: '#3ddc84',
+      pointBorderColor: '#0a0f0d',
+      pointRadius: 3,
+      pointHoverRadius: 5,
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: true,
+    animation: { duration: 1200, easing: 'easeOutQuart' },
+    scales: {
+      r: {
+        min: 0, max: 100,
+        ticks: {
+          display: false,
+          stepSize: 25,
+        },
+        grid: {
+          color: 'rgba(30,52,36,0.8)',
+          lineWidth: 1,
+        },
+        angleLines: { color: 'rgba(30,52,36,0.6)', lineWidth: 1 },
+        pointLabels: {
+          color: '#7aab84',
+          font: { family: "'Share Tech Mono', monospace", size: 10 }
+        }
+      }
+    },
+    plugins: { legend: { display: false } }
+  }
+});
+
+// ─── ACTIVITY CHART ───
+const actCtx = document.getElementById('activityChart').getContext('2d');
+new Chart(actCtx, {
+  type: 'line',
+  data: {
+    labels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+    datasets: [{
+      data: [85, 120, 60, 140, 105, 90, 155],
+      borderColor: '#3ddc84',
+      borderWidth: 1.5,
+      backgroundColor: (ctx) => {
+        const g = ctx.chart.ctx.createLinearGradient(0, 0, 0, 130);
+        g.addColorStop(0, 'rgba(61,220,132,0.25)');
+        g.addColorStop(1, 'rgba(61,220,132,0)');
+        return g;
+      },
+      fill: true,
+      tension: 0.4,
+      pointRadius: 3,
+      pointBackgroundColor: '#3ddc84',
+      pointBorderColor: '#0a0f0d',
+      pointHoverRadius: 5,
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: { duration: 1000, easing: 'easeOutCubic' },
+    scales: {
+      x: {
+        grid: { color: 'rgba(30,52,36,0.4)' },
+        ticks: { color: '#3d6644', font: { family: "'Share Tech Mono', monospace", size: 9 } }
+      },
+      y: {
+        grid: { color: 'rgba(30,52,36,0.4)' },
+        ticks: { color: '#3d6644', font: { family: "'Share Tech Mono', monospace", size: 9 }, maxTicksLimit: 4 }
+      }
+    },
+    plugins: { legend: { display: false } }
+  }
+});
+
+// ─── QUEST TOGGLE ───
+function toggleQuest(el) {
+  el.classList.toggle('done');
+  const check = el.querySelector('.quest-check');
+  check.textContent = el.classList.contains('done') ? '✓' : '';
+}
+
+// ─── QUEST TABS ───
+document.querySelectorAll('.quest-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.quest-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+  });
+});
+
+// ─── LIVE CLOCK ───
+function updateClock() {
+  const now = new Date();
+  const d = now.toISOString().split('T')[0];
+  const days = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+  document.querySelector('.date-display').innerHTML =
+    `${days[now.getDay()]} · ${d} · <span class="live-dot"></span>ACTIVE`;
+}
+setInterval(updateClock, 60000);
+</script>
+</body>
+</html>

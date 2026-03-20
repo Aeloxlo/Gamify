@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Job Hunt Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #080c10;
+  --bg2: #0e1318;
+  --bg3: #141a20;
+  --border: #1e2730;
+  --border2: #263040;
+  --accent: #00d4ff;
+  --accent2: #0099cc;
+  --gold: #ffb020;
+  --green: #00e676;
+  --red: #ff4444;
+  --purple: #bf7fff;
+  --orange: #ff8c00;
+  --text: #d0dce8;
+  --text2: #6a8099;
+  --text3: #2a3a4a;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--bg); color:var(--text); font-family:'Space Grotesk',sans-serif; font-size:14px; min-height:100vh; }
+
+.wrap { padding:16px; max-width:1400px; margin:0 auto; display:grid; grid-template-columns:280px 1fr; grid-template-rows:auto; gap:12px; }
+
+/* Header full width */
+.header { grid-column:1/-1; background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:18px 24px; display:flex; align-items:center; gap:16px; border-top:3px solid var(--accent); }
+.header-title { font-size:20px; font-weight:700; letter-spacing:-0.5px; }
+.header-sub { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text2); margin-top:3px; }
+.status-badge { margin-left:auto; background:rgba(0,212,255,0.1); border:1px solid rgba(0,212,255,0.3); color:var(--accent); font-family:'JetBrains Mono',monospace; font-size:11px; padding:4px 12px; border-radius:20px; }
+
+/* Left sidebar */
+.sidebar { display:flex; flex-direction:column; gap:10px; }
+
+.card { background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:16px; }
+.card-label { font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:2px; color:var(--text3); text-transform:uppercase; margin-bottom:12px; }
+
+/* Pipeline funnel */
+.funnel { display:flex; flex-direction:column; gap:4px; }
+.funnel-row { display:flex; align-items:center; gap:8px; cursor:pointer; padding:6px 8px; border-radius:4px; transition:background .15s; }
+.funnel-row:hover { background:var(--bg3); }
+.funnel-dot { width:10px; height:10px; border-radius:2px; flex-shrink:0; }
+.funnel-name { flex:1; font-size:12px; font-weight:500; }
+.funnel-count { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text2); }
+.funnel-bar-wrap { position:relative; margin-top:6px; }
+.funnel-bar-bg { height:3px; background:var(--bg3); border-radius:2px; margin-bottom:2px; }
+.funnel-bar-fill { height:3px; border-radius:2px; position:absolute; top:0; left:0; }
+
+/* Streak / stats */
+.stats-mini { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+.stat-mini { background:var(--bg3); border:1px solid var(--border); border-radius:6px; padding:10px; }
+.stat-mini-val { font-size:20px; font-weight:700; color:var(--accent); }
+.stat-mini-lbl { font-family:'JetBrains Mono',monospace; font-size:9px; color:var(--text2); margin-top:2px; }
+
+/* Main area */
+.main { display:flex; flex-direction:column; gap:10px; }
+
+/* Applications */
+.app-list { display:flex; flex-direction:column; gap:6px; }
+.app-item {
+  background:var(--bg3); border:1px solid var(--border); border-radius:6px;
+  padding:14px 16px; display:flex; align-items:center; gap:14px;
+  transition:border-color .15s, transform .1s;
+  cursor:pointer; position:relative; overflow:hidden;
+}
+.app-item::before { content:''; position:absolute; left:0; top:0; bottom:0; width:3px; }
+.app-item:hover { border-color:var(--border2); transform:translateX(2px); }
+
+.app-company-logo {
+  width:38px; height:38px; border-radius:8px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:16px; flex-shrink:0; font-weight:700;
+  border:1px solid var(--border);
+}
+.app-info { flex:1; min-width:0; }
+.app-role { font-size:14px; font-weight:600; color:var(--text); }
+.app-company { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text2); margin-top:2px; }
+.app-meta { display:flex; gap:6px; margin-top:5px; flex-wrap:wrap; }
+.app-tag {
+  font-family:'JetBrains Mono',monospace; font-size:9px;
+  padding:2px 7px; border-radius:3px;
+}
+
+.app-right { display:flex; flex-direction:column; align-items:flex-end; gap:5px; }
+.app-stage { font-family:'JetBrains Mono',monospace; font-size:10px; padding:3px 10px; border-radius:12px; }
+.app-date { font-family:'JetBrains Mono',monospace; font-size:9px; color:var(--text3); }
+.app-excitement { font-size:11px; }
+
+/* Stage colours */
+.stage-saved    { background:rgba(106,128,153,0.2); color:var(--text2); border:1px solid rgba(106,128,153,0.3); }
+.stage-applied  { background:rgba(0,212,255,0.1); color:var(--accent); border:1px solid rgba(0,212,255,0.25); }
+.stage-screen   { background:rgba(255,176,32,0.12); color:var(--gold); border:1px solid rgba(255,176,32,0.3); }
+.stage-interview{ background:rgba(191,127,255,0.12); color:var(--purple); border:1px solid rgba(191,127,255,0.3); }
+.stage-rejected { background:rgba(255,68,68,0.1); color:var(--red); border:1px solid rgba(255,68,68,0.2); }
+
+/* Upcoming */
+.upcoming { display:flex; flex-direction:column; gap:6px; }
+.event-item {
+  display:flex; gap:12px; align-items:center;
+  padding:10px 14px; background:var(--bg3); border:1px solid var(--border); border-radius:6px;
+}
+.event-date-block {
+  background:rgba(0,212,255,0.08); border:1px solid rgba(0,212,255,0.2);
+  border-radius:6px; padding:6px 10px; text-align:center; min-width:50px;
+}
+.event-day { font-family:'JetBrains Mono',monospace; font-size:18px; font-weight:700; color:var(--accent); line-height:1; }
+.event-mon { font-family:'JetBrains Mono',monospace; font-size:9px; color:var(--text2); }
+.event-info { flex:1; }
+.event-title { font-size:13px; font-weight:600; }
+.event-sub { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text2); margin-top:2px; }
+.event-type { font-family:'JetBrains Mono',monospace; font-size:9px; padding:2px 8px; border-radius:3px; background:rgba(191,127,255,0.15); color:var(--purple); border:1px solid rgba(191,127,255,0.25); }
+
+@keyframes slideIn { from{opacity:0;transform:translateX(-6px)} to{opacity:1;transform:translateX(0)} }
+.app-item { animation:slideIn .3s ease forwards; }
+.app-item:nth-child(2){animation-delay:.05s} .app-item:nth-child(3){animation-delay:.1s}
+.app-item:nth-child(4){animation-delay:.15s} .app-item:nth-child(5){animation-delay:.2s}
+.app-item:nth-child(6){animation-delay:.25s}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="header">
+    <div>
+      <div class="header-title">🎯 Job Hunt Tracker</div>
+      <div class="header-sub">Motorsport & Aerospace Engineering · March 2026</div>
+    </div>
+    <div class="status-badge">● 5 ACTIVE APPLICATIONS</div>
+  </div>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+
+    <div class="card">
+      <div class="card-label">Pipeline</div>
+      <div class="funnel">
+        <div class="funnel-row">
+          <div class="funnel-dot" style="background:#6a8099"></div>
+          <span class="funnel-name">Saved</span>
+          <span class="funnel-count">2</span>
+        </div>
+        <div class="funnel-bar-wrap"><div class="funnel-bar-bg" style="width:100%"></div><div class="funnel-bar-fill" style="width:100%;background:#6a8099"></div></div>
+        <div class="funnel-row">
+          <div class="funnel-dot" style="background:var(--accent)"></div>
+          <span class="funnel-name">Applied</span>
+          <span class="funnel-count">1</span>
+        </div>
+        <div class="funnel-bar-wrap"><div class="funnel-bar-bg" style="width:100%"></div><div class="funnel-bar-fill" style="width:50%;background:var(--accent)"></div></div>
+        <div class="funnel-row">
+          <div class="funnel-dot" style="background:var(--gold)"></div>
+          <span class="funnel-name">Screening</span>
+          <span class="funnel-count">1</span>
+        </div>
+        <div class="funnel-bar-wrap"><div class="funnel-bar-bg" style="width:100%"></div><div class="funnel-bar-fill" style="width:50%;background:var(--gold)"></div></div>
+        <div class="funnel-row">
+          <div class="funnel-dot" style="background:var(--purple)"></div>
+          <span class="funnel-name">Interview</span>
+          <span class="funnel-count">1</span>
+        </div>
+        <div class="funnel-bar-wrap"><div class="funnel-bar-bg" style="width:100%"></div><div class="funnel-bar-fill" style="width:50%;background:var(--purple)"></div></div>
+        <div class="funnel-row">
+          <div class="funnel-dot" style="background:var(--red)"></div>
+          <span class="funnel-name">Rejected</span>
+          <span class="funnel-count">1</span>
+        </div>
+        <div class="funnel-bar-wrap"><div class="funnel-bar-bg" style="width:100%"></div><div class="funnel-bar-fill" style="width:50%;background:var(--red)"></div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Stats</div>
+      <div class="stats-mini">
+        <div class="stat-mini"><div class="stat-mini-val">6</div><div class="stat-mini-lbl">Total apps</div></div>
+        <div class="stat-mini"><div class="stat-mini-val">33%</div><div class="stat-mini-lbl">Response rate</div></div>
+        <div class="stat-mini"><div class="stat-mini-val">2</div><div class="stat-mini-lbl">Interviews</div></div>
+        <div class="stat-mini"><div class="stat-mini-val">€80k</div><div class="stat-mini-lbl">Avg target</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Upcoming</div>
+      <div class="upcoming">
+        <div class="event-item">
+          <div class="event-date-block"><div class="event-day">25</div><div class="event-mon">MAR</div></div>
+          <div class="event-info">
+            <div class="event-title">Porsche Engineering</div>
+            <div class="event-sub">Phone screen · FEA focus</div>
+          </div>
+          <div class="event-type">SCREEN</div>
+        </div>
+        <div class="event-item">
+          <div class="event-date-block"><div class="event-day">28</div><div class="event-mon">MAR</div></div>
+          <div class="event-info">
+            <div class="event-title">Safran</div>
+            <div class="event-sub">Technical interview</div>
+          </div>
+          <div class="event-type">TECH</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+
+    <div class="card">
+      <div class="card-label">Applications</div>
+      <div class="app-list">
+
+        <div class="app-item" style="border-left-color:var(--purple)">
+          <div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--purple)"></div>
+          <div class="app-company-logo" style="background:rgba(191,127,255,0.1);color:var(--purple)">SF</div>
+          <div class="app-info">
+            <div class="app-role">Structural Analyst</div>
+            <div class="app-company">SAFRAN · Hybrid · €58k–72k</div>
+            <div class="app-meta">
+              <span class="app-tag" style="background:rgba(191,127,255,0.12);color:var(--purple);border:1px solid rgba(191,127,255,0.25)">FEA</span>
+              <span class="app-tag" style="background:rgba(0,212,255,0.08);color:var(--accent);border:1px solid rgba(0,212,255,0.2)">Aerospace</span>
+            </div>
+          </div>
+          <div class="app-right">
+            <span class="app-stage stage-interview">🧪 INTERVIEW</span>
+            <span class="app-date">Applied Feb 20 · Interview Mar 28</span>
+            <span class="app-excitement">😐 Medium</span>
+          </div>
+        </div>
+
+        <div class="app-item">
+          <div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--gold)"></div>
+          <div class="app-company-logo" style="background:rgba(255,176,32,0.1);color:var(--gold)">PE</div>
+          <div class="app-info">
+            <div class="app-role">FEA Specialist</div>
+            <div class="app-company">PORSCHE ENGINEERING · On-site · €65k–80k</div>
+            <div class="app-meta">
+              <span class="app-tag" style="background:rgba(255,176,32,0.12);color:var(--gold);border:1px solid rgba(255,176,32,0.25)">Automotive</span>
+              <span class="app-tag" style="background:rgba(0,230,118,0.08);color:var(--green);border:1px solid rgba(0,230,118,0.2)">🔥 High</span>
+            </div>
+          </div>
+          <div class="app-right">
+            <span class="app-stage stage-screen">📞 SCREENING</span>
+            <span class="app-date">Applied Mar 1 · Screen Mar 25</span>
+            <span class="app-excitement">🔥 High</span>
+          </div>
+        </div>
+
+        <div class="app-item">
+          <div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent)"></div>
+          <div class="app-company-logo" style="background:rgba(0,212,255,0.1);color:var(--accent)">AD</div>
+          <div class="app-info">
+            <div class="app-role">Simulation Engineer</div>
+            <div class="app-company">AIRBUS DEFENCE · Hybrid · €60k–75k</div>
+            <div class="app-meta">
+              <span class="app-tag" style="background:rgba(0,212,255,0.08);color:var(--accent);border:1px solid rgba(0,212,255,0.2)">CFD</span>
+              <span class="app-tag" style="background:rgba(0,212,255,0.08);color:var(--accent);border:1px solid rgba(0,212,255,0.2)">Aerospace</span>
+            </div>
+          </div>
+          <div class="app-right">
+            <span class="app-stage stage-applied">📤 APPLIED</span>
+            <span class="app-date">Applied Mar 10</span>
+            <span class="app-excitement">😐 Medium</span>
+          </div>
+        </div>
+
+        <div class="app-item">
+          <div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--red)"></div>
+          <div class="app-company-logo" style="background:rgba(0,230,118,0.1);color:var(--green)">RB</div>
+          <div class="app-info">
+            <div class="app-role">CFD Engineer</div>
+            <div class="app-company">RED BULL RACING · On-site · €70k–90k</div>
+            <div class="app-meta">
+              <span class="app-tag" style="background:rgba(255,68,68,0.1);color:var(--red);border:1px solid rgba(255,68,68,0.2)">F1</span>
+              <span class="app-tag" style="background:rgba(0,230,118,0.08);color:var(--green);border:1px solid rgba(0,230,118,0.2)">🔥 Dream job</span>
+            </div>
+          </div>
+          <div class="app-right">
+            <span class="app-stage stage-saved">👀 SAVED</span>
+            <span class="app-date">Saved Mar 18</span>
+            <span class="app-excitement">🔥 High</span>
+          </div>
+        </div>
+
+        <div class="app-item">
+          <div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--green)"></div>
+          <div class="app-company-logo" style="background:rgba(0,230,118,0.1);color:var(--green)">SB</div>
+          <div class="app-info">
+            <div class="app-role">Dynamics Simulation Engineer</div>
+            <div class="app-company">SAUBER MOTORSPORT · On-site · €75k–95k</div>
+            <div class="app-meta">
+              <span class="app-tag" style="background:rgba(0,230,118,0.08);color:var(--green);border:1px solid rgba(0,230,118,0.2)">F1</span>
+              <span class="app-tag" style="background:rgba(0,230,118,0.08);color:var(--green);border:1px solid rgba(0,230,118,0.2)">🔥 High</span>
+            </div>
+          </div>
+          <div class="app-right">
+            <span class="app-stage stage-saved">👀 SAVED</span>
+            <span class="app-date">Find LinkedIn contact first</span>
+            <span class="app-excitement">🔥 High</span>
+          </div>
+        </div>
+
+        <div class="app-item" style="opacity:0.5">
+          <div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--red)"></div>
+          <div class="app-company-logo" style="background:rgba(255,68,68,0.08);color:var(--red)">CA</div>
+          <div class="app-info">
+            <div class="app-role">CAE Engineer</div>
+            <div class="app-company">CONTINENTAL AG · Hybrid · €55k–68k</div>
+            <div class="app-meta">
+              <span class="app-tag" style="background:rgba(255,68,68,0.1);color:var(--red);border:1px solid rgba(255,68,68,0.2)">Automotive</span>
+            </div>
+          </div>
+          <div class="app-right">
+            <span class="app-stage stage-rejected">❌ REJECTED</span>
+            <span class="app-date">Applied Feb 10 · Rejected</span>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3)">Need automotive exp.</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Finance Tracker Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg: #0d1117;
+  --bg2: #161b22;
+  --bg3: #1c2128;
+  --border: #30363d;
+  --border2: #3d444d;
+  --green: #3fb950;
+  --green2: #238636;
+  --red: #f85149;
+  --red2: #da3633;
+  --blue: #58a6ff;
+  --gold: #d29922;
+  --gold2: #e3b341;
+  --purple: #bc8cff;
+  --text: #e6edf3;
+  --text2: #8b949e;
+  --text3: #484f58;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--bg); color:var(--text); font-family:'Outfit',sans-serif; font-size:14px; min-height:100vh; }
+
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: auto auto auto;
+  gap: 12px;
+  padding: 16px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.header {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 24px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  border-left: 4px solid var(--green);
+}
+.header-title { font-size: 22px; font-weight: 700; color: var(--text); }
+.header-sub { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text2); margin-top: 2px; }
+.header-date { margin-left: auto; font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text3); }
+
+.card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+}
+.card-title {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--text3);
+  text-transform: uppercase;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.card-title::before {
+  content: '';
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+}
+
+/* KPI cards */
+.kpi-grid {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+.kpi {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+}
+.kpi::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 3px;
+}
+.kpi.income::after  { background: var(--green); }
+.kpi.expense::after { background: var(--red); }
+.kpi.savings::after { background: var(--gold2); }
+.kpi.rate::after    { background: var(--blue); }
+
+.kpi-label { font-family:'DM Mono',monospace; font-size:10px; color:var(--text3); letter-spacing:1px; text-transform:uppercase; margin-bottom:8px; }
+.kpi-value { font-size: 28px; font-weight: 700; line-height: 1; }
+.kpi-sub   { font-family:'DM Mono',monospace; font-size:11px; color:var(--text2); margin-top:6px; }
+.income-val  { color: var(--green); }
+.expense-val { color: var(--red); }
+.savings-val { color: var(--gold2); }
+.rate-val    { color: var(--blue); }
+
+/* Donut chart */
+.chart-donut { height: 220px; display:flex; align-items:center; justify-content:center; }
+
+/* Bar chart */
+.chart-bar { height: 220px; }
+
+/* Line chart */
+.chart-line { grid-column: span 2; }
+.chart-line .chart-area { height: 200px; }
+
+/* Transactions */
+.transactions { grid-column: span 2; }
+.tx-list { display:flex; flex-direction:column; gap:6px; }
+.tx-item {
+  display:flex; align-items:center; gap:12px;
+  padding: 10px 12px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  transition: border-color 0.15s;
+}
+.tx-item:hover { border-color: var(--border2); }
+.tx-icon { width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; }
+.tx-info { flex:1; }
+.tx-name  { font-size:13px; font-weight:500; }
+.tx-date  { font-family:'DM Mono',monospace; font-size:10px; color:var(--text3); margin-top:1px; }
+.tx-amount { font-family:'DM Mono',monospace; font-size:13px; font-weight:600; }
+.tx-neg { color:var(--red); }
+.tx-pos { color:var(--green); }
+.tx-tag {
+  font-family:'DM Mono',monospace; font-size:9px;
+  padding:2px 7px; border-radius:4px;
+}
+
+/* Budget table */
+.budget-table { width:100%; border-collapse:collapse; }
+.budget-table th {
+  font-family:'DM Mono',monospace; font-size:9px;
+  color:var(--text3); text-transform:uppercase; letter-spacing:1px;
+  padding:8px 0; border-bottom:1px solid var(--border);
+  text-align:left;
+}
+.budget-table td {
+  padding:10px 0;
+  border-bottom:1px solid var(--border);
+  font-size:13px;
+}
+.budget-table tr:last-child td { border-bottom:none; }
+.budget-bar-wrap {
+  width:100%; height:5px;
+  background:var(--bg3); border-radius:3px;
+  overflow:hidden; margin-top:4px;
+}
+.budget-bar { height:100%; border-radius:3px; }
+.ok   { background:var(--green2); }
+.warn { background:var(--gold); }
+.over { background:var(--red2); }
+
+@keyframes fadeup { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+.card,.kpi { animation: fadeup 0.4s ease forwards; }
+.kpi:nth-child(1){animation-delay:.05s} .kpi:nth-child(2){animation-delay:.1s}
+.kpi:nth-child(3){animation-delay:.15s} .kpi:nth-child(4){animation-delay:.2s}
+</style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- Header -->
+  <div class="header">
+    <div>
+      <div class="header-title">💰 Finance Tracker</div>
+      <div class="header-sub">Personal Finance Dashboard · March 2026</div>
+    </div>
+    <div class="header-date">Last updated: Mar 20, 2026</div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpi-grid">
+    <div class="kpi income">
+      <div class="kpi-label">Total Income</div>
+      <div class="kpi-value income-val">€3,739</div>
+      <div class="kpi-sub">+€67 from side projects ↑</div>
+    </div>
+    <div class="kpi expense">
+      <div class="kpi-label">Total Expenses</div>
+      <div class="kpi-value expense-val">€1,293</div>
+      <div class="kpi-sub">€157 under budget ✓</div>
+    </div>
+    <div class="kpi savings">
+      <div class="kpi-label">Net Savings</div>
+      <div class="kpi-value savings-val">€2,446</div>
+      <div class="kpi-sub">€2,446 saved this month</div>
+    </div>
+    <div class="kpi rate">
+      <div class="kpi-label">Savings Rate</div>
+      <div class="kpi-value rate-val">65.4%</div>
+      <div class="kpi-sub">Target: 20% · 🚀 Crushing it</div>
+    </div>
+  </div>
+
+  <!-- Donut: spending by category -->
+  <div class="card">
+    <div class="card-title">Spending by Category</div>
+    <div class="chart-donut">
+      <canvas id="donutChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Bar: budget vs actual -->
+  <div class="card">
+    <div class="card-title">Budget vs Actual</div>
+    <div class="chart-bar">
+      <canvas id="barChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Budget breakdown -->
+  <div class="card">
+    <div class="card-title">Budget Status</div>
+    <table class="budget-table">
+      <thead><tr><th>Category</th><th>Spent</th><th>Budget</th><th>%</th></tr></thead>
+      <tbody id="budgetRows"></tbody>
+    </table>
+  </div>
+
+  <!-- Line: monthly trend -->
+  <div class="card chart-line">
+    <div class="card-title">Monthly Trend — Savings Rate</div>
+    <div class="chart-area">
+      <canvas id="lineChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Income breakdown -->
+  <div class="card">
+    <div class="card-title">Income Sources</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:var(--bg3);border-radius:6px;border:1px solid var(--border);">
+        <div><div style="font-weight:600">💼 Salary</div><div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text3)">Recurring · monthly</div></div>
+        <div style="font-family:'DM Mono',monospace;font-weight:700;color:var(--green)">€3,200</div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:var(--bg3);border-radius:6px;border:1px solid var(--border);">
+        <div><div style="font-weight:600">🔧 CFD Consulting</div><div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text3)">Freelance · one-off</div></div>
+        <div style="font-family:'DM Mono',monospace;font-weight:700;color:var(--green)">€450</div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:var(--bg3);border-radius:6px;border:1px solid var(--border);">
+        <div><div style="font-weight:600">💡 Notion Templates</div><div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text3)">Side project · Gumroad</div></div>
+        <div style="font-family:'DM Mono',monospace;font-weight:700;color:var(--gold2)">€67</div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:var(--bg3);border-radius:6px;border:1px solid var(--border);">
+        <div><div style="font-weight:600">📈 Dividends</div><div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text3)">Trade Republic</div></div>
+        <div style="font-family:'DM Mono',monospace;font-weight:700;color:var(--green)">€22.40</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Transactions -->
+  <div class="card transactions">
+    <div class="card-title">Recent Transactions</div>
+    <div class="tx-list">
+      <div class="tx-item">
+        <div class="tx-icon" style="background:rgba(248,81,73,0.15)">🏠</div>
+        <div class="tx-info"><div class="tx-name">Rent — March</div><div class="tx-date">Mar 1 · Housing · Recurring</div></div>
+        <div class="tx-amount tx-neg">-€750.00</div>
+      </div>
+      <div class="tx-item">
+        <div class="tx-icon" style="background:rgba(88,166,255,0.15)">🍔</div>
+        <div class="tx-info"><div class="tx-name">Grocery run — Colruyt</div><div class="tx-date">Mar 18 · Food</div></div>
+        <div class="tx-amount tx-neg">-€87.40</div>
+      </div>
+      <div class="tx-item">
+        <div class="tx-icon" style="background:rgba(63,185,80,0.15)">💡</div>
+        <div class="tx-info"><div class="tx-name">Notion Templates — Gumroad</div><div class="tx-date">Mar 19 · Side Project</div></div>
+        <div class="tx-amount tx-pos">+€67.00</div>
+      </div>
+      <div class="tx-item">
+        <div class="tx-icon" style="background:rgba(188,140,255,0.15)">👟</div>
+        <div class="tx-info"><div class="tx-name">New running shoes</div><div class="tx-date">Mar 12 · Shopping ⚠️ Over budget</div></div>
+        <div class="tx-amount tx-neg">-€120.00</div>
+      </div>
+      <div class="tx-item">
+        <div class="tx-icon" style="background:rgba(210,153,34,0.15)">📱</div>
+        <div class="tx-info"><div class="tx-name">Claude Pro + Spotify</div><div class="tx-date">Mar 7 · Subscriptions · Recurring</div></div>
+        <div class="tx-amount tx-neg">-€28.99</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const mono = "'DM Mono', monospace";
+const textColor = '#8b949e';
+const gridColor = 'rgba(48,54,61,0.8)';
+
+// Donut
+new Chart(document.getElementById('donutChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Housing','Food','Health','Subscriptions','Utilities','Shopping','Education','Transport'],
+    datasets: [{
+      data: [750, 183.6, 39.99, 28.99, 140, 120, 14.99, 14.8],
+      backgroundColor: ['#58a6ff','#3fb950','#f85149','#bc8cff','#d29922','#e3b341','#79c0ff','#7ee787'],
+      borderColor: '#161b22',
+      borderWidth: 3,
+      hoverOffset: 8,
+    }]
+  },
+  options: {
+    responsive:true, maintainAspectRatio:true,
+    cutout: '68%',
+    animation: { duration:1000, easing:'easeOutQuart' },
+    plugins: {
+      legend: { position:'right', labels:{ color:textColor, font:{family:mono,size:10}, boxWidth:10, padding:8 } }
+    }
+  }
+});
+
+// Bar budget vs actual
+const cats = ['Housing','Food','Health','Utilities','Shopping','Subscriptions'];
+const budget = [800,300,60,150,100,50];
+const actual = [750,183.6,39.99,140,120,28.99];
+new Chart(document.getElementById('barChart'), {
+  type:'bar',
+  data:{
+    labels: cats,
+    datasets:[
+      { label:'Budget', data:budget, backgroundColor:'rgba(88,166,255,0.25)', borderColor:'#58a6ff', borderWidth:1, borderRadius:4 },
+      { label:'Actual', data:actual, backgroundColor:actual.map((a,i)=>a>budget[i]?'rgba(248,81,73,0.7)':'rgba(63,185,80,0.7)'), borderColor:actual.map((a,i)=>a>budget[i]?'#f85149':'#3fb950'), borderWidth:1, borderRadius:4 }
+    ]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    animation:{duration:900},
+    scales:{
+      x:{grid:{color:gridColor},ticks:{color:textColor,font:{family:mono,size:9}}},
+      y:{grid:{color:gridColor},ticks:{color:textColor,font:{family:mono,size:9},maxTicksLimit:5}}
+    },
+    plugins:{ legend:{labels:{color:textColor,font:{family:mono,size:10},boxWidth:10}} }
+  }
+});
+
+// Line monthly trend
+new Chart(document.getElementById('lineChart'), {
+  type:'line',
+  data:{
+    labels:['Oct','Nov','Dec','Jan','Feb','Mar'],
+    datasets:[
+      {
+        label:'Savings Rate %',
+        data:[42,38,31,55,58,65.4],
+        borderColor:'#3fb950', borderWidth:2,
+        backgroundColor:(ctx)=>{
+          const g=ctx.chart.ctx.createLinearGradient(0,0,0,200);
+          g.addColorStop(0,'rgba(63,185,80,0.3)');g.addColorStop(1,'rgba(63,185,80,0)');return g;
+        },
+        fill:true, tension:0.4, pointRadius:4,
+        pointBackgroundColor:'#3fb950', pointBorderColor:'#0d1117'
+      },{
+        label:'Expense %',
+        data:[55,60,65,40,38,34.6],
+        borderColor:'#f85149', borderWidth:1.5,
+        backgroundColor:'transparent',
+        fill:false, tension:0.4, pointRadius:3,
+        pointBackgroundColor:'#f85149', pointBorderColor:'#0d1117',
+        borderDash:[4,4]
+      }
+    ]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    animation:{duration:1000},
+    scales:{
+      x:{grid:{color:gridColor},ticks:{color:textColor,font:{family:mono,size:10}}},
+      y:{grid:{color:gridColor},ticks:{color:textColor,font:{family:mono,size:10},callback:v=>v+'%',maxTicksLimit:5},min:0,max:80}
+    },
+    plugins:{ legend:{labels:{color:textColor,font:{family:mono,size:10},boxWidth:10}} }
+  }
+});
+
+// Budget rows
+const budgetData = [
+  {cat:'🏠 Housing',spent:750,budget:800},
+  {cat:'🍔 Food',spent:183.6,budget:300},
+  {cat:'💊 Health',spent:39.99,budget:60},
+  {cat:'🔧 Utilities',spent:140,budget:150},
+  {cat:'👕 Shopping',spent:120,budget:100},
+  {cat:'📱 Subscriptions',spent:28.99,budget:50},
+];
+const tbody = document.getElementById('budgetRows');
+budgetData.forEach(r=>{
+  const pct = Math.round(r.spent/r.budget*100);
+  const cls = pct>100?'over':pct>80?'warn':'ok';
+  tbody.innerHTML += `<tr>
+    <td style="font-weight:500">${r.cat}</td>
+    <td style="font-family:'DM Mono',monospace;color:${pct>100?'#f85149':'#e6edf3'}">€${r.spent}</td>
+    <td style="font-family:'DM Mono',monospace;color:#484f58">€${r.budget}</td>
+    <td style="min-width:60px">
+      <span style="font-family:'DM Mono',monospace;font-size:11px;color:${pct>100?'#f85149':pct>80?'#d29922':'#3fb950'}">${pct}%</span>
+      <div class="budget-bar-wrap"><div class="budget-bar ${cls}" style="width:${Math.min(pct,100)}%"></div></div>
+    </td>
+  </tr>`;
+});
+</script>
+</body>
+</html>
